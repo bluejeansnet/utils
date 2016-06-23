@@ -4,6 +4,7 @@
 package com.bluejeans.utils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
@@ -64,10 +65,45 @@ public class MetaUtil {
      * @return the string value
      */
     public static String getResourceAsString(final String resourceName) {
+        InputStream resourceStream = null;
         try {
-            return IOUtils.toString(MetaUtil.class.getResourceAsStream(resourceName));
+            resourceStream = MetaUtil.class.getResourceAsStream(resourceName);
+            return IOUtils.toString(resourceStream);
         } catch (final IOException e) {
             return "";
+        } finally {
+            if (resourceStream != null) {
+                try {
+                    resourceStream.close();
+                } catch (final IOException e) {
+                    // do nothing.
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the resource as bytes.
+     *
+     * @param resourceName
+     *            the resource name
+     * @return the bytes value
+     */
+    public static byte[] getResourceAsBytes(final String resourceName) {
+        InputStream resourceStream = null;
+        try {
+            resourceStream = MetaUtil.class.getResourceAsStream(resourceName);
+            return IOUtils.toByteArray(resourceStream);
+        } catch (final IOException e) {
+            return new byte[0];
+        } finally {
+            if (resourceStream != null) {
+                try {
+                    resourceStream.close();
+                } catch (final IOException e) {
+                    // do nothing.
+                }
+            }
         }
     }
 
@@ -80,8 +116,8 @@ public class MetaUtil {
      *             implicit
      */
     public static void registerAsMBean(final Object bean) throws JMException {
-        MetaUtil.registerAsMBean(bean, bean.getClass().getPackage().getName() + ":type="
-                + bean.getClass().getSimpleName());
+        MetaUtil.registerAsMBean(bean,
+                bean.getClass().getPackage().getName() + ":type=" + bean.getClass().getSimpleName());
     }
 
     /**
@@ -103,9 +139,9 @@ public class MetaUtil {
     /**
      * The simple return type list
      */
-    public static final List<Class<?>> SIMPLE_RETURN_TYPE_LIST = new ArrayList<Class<?>>(Arrays.asList(Boolean.TYPE,
-            Boolean.class, Integer.class, Integer.TYPE, Long.class, Long.TYPE, Short.class, Short.TYPE, Double.TYPE,
-            Double.class, Float.class, Float.TYPE, String.class));
+    public static final List<Class<?>> SIMPLE_RETURN_TYPE_LIST = new ArrayList<Class<?>>(
+            Arrays.asList(Boolean.TYPE, Boolean.class, Integer.class, Integer.TYPE, Long.class, Long.TYPE, Short.class,
+                    Short.TYPE, Double.TYPE, Double.class, Float.class, Float.TYPE, String.class));
 
     /**
      * Finds the first method starting by this name or null if not found.
@@ -126,8 +162,7 @@ public class MetaUtil {
     }
 
     /**
-     * Finds the first method ending by this name and having this return type or
-     * null if not found.
+     * Finds the first method ending by this name and having this return type or null if not found.
      *
      * @param clazz
      *            the class
@@ -166,8 +201,7 @@ public class MetaUtil {
     }
 
     /**
-     * Find first method matching name and no. of arguments or null if none
-     * found.
+     * Find first method matching name and no. of arguments or null if none found.
      *
      * @param classz
      *            the class
@@ -303,8 +337,7 @@ public class MetaUtil {
     }
 
     /**
-     * All fields that can be found on an object's hierarchy other than itself
-     * of the given class
+     * All fields that can be found on an object's hierarchy other than itself of the given class
      *
      * @param classz
      *            the class
@@ -369,8 +402,8 @@ public class MetaUtil {
     }
 
     /**
-     * Get the map of all the return values of all the methods starting with
-     * given prefix with the given return types of the given bean.
+     * Get the map of all the return values of all the methods starting with given prefix with the
+     * given return types of the given bean.
      *
      * @param target
      *            the target object
@@ -404,8 +437,8 @@ public class MetaUtil {
     }
 
     /**
-     * Get the map of all the return values of all the methods with no arguments
-     * with simple return types of the given bean.
+     * Get the map of all the return values of all the methods with no arguments with simple return
+     * types of the given bean.
      *
      * @param target
      *            the target object
@@ -418,8 +451,7 @@ public class MetaUtil {
     }
 
     /**
-     * Returns a map containing the object's class name as key with the object
-     * itself as value.
+     * Returns a map containing the object's class name as key with the object itself as value.
      *
      * @param objects
      *            the objects
@@ -495,8 +527,7 @@ public class MetaUtil {
     }
 
     /**
-     * Get available server port from the given port inclusive, until the max
-     * count.
+     * Get available server port from the given port inclusive, until the max count.
      *
      * @param startPort
      *            the start port
@@ -561,18 +592,20 @@ public class MetaUtil {
      *             if anything wrong happens
      */
     public static void disableSslCertificates() throws GeneralSecurityException {
-        final TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
+        final TrustManager[] trustAllCerts = new TrustManager[] { new X509TrustManager() {
             @Override
             public java.security.cert.X509Certificate[] getAcceptedIssuers() {
                 return null;
             }
+
             @Override
             public void checkClientTrusted(final java.security.cert.X509Certificate[] certs, final String authType) {
             }
+
             @Override
             public void checkServerTrusted(final java.security.cert.X509Certificate[] certs, final String authType) {
             }
-        }};
+        } };
         // Install the all-trusting trust manager
         final SSLContext sc = SSLContext.getInstance("SSL");
         sc.init(null, trustAllCerts, new java.security.SecureRandom());
@@ -596,8 +629,8 @@ public class MetaUtil {
     }
 
     /**
-     * For each field that the subclass has, if superclasses also have it, then
-     * fetch that value from hierarchy and set here.
+     * For each field that the subclass has, if superclasses also have it, then fetch that value
+     * from hierarchy and set here.
      *
      * @param obj
      *            the object
@@ -610,7 +643,7 @@ public class MetaUtil {
             for (final Field superField : superFields) {
                 if (superField.getName().equals(field.getName())) {
                     try {
-                        AccessibleObject.setAccessible(new Field[]{field, superField}, true);
+                        AccessibleObject.setAccessible(new Field[] { field, superField }, true);
                     } catch (final RuntimeException re) {
                         // do nothing
                     }
@@ -626,8 +659,8 @@ public class MetaUtil {
     }
 
     /**
-     * For each field that the destination has, if source also have it, then
-     * fetch that value from source and set in destination.
+     * For each field that the destination has, if source also have it, then fetch that value from
+     * source and set in destination.
      *
      * @param dst
      *            the destination object
@@ -641,7 +674,7 @@ public class MetaUtil {
             for (final Field srcField : srcFields) {
                 if (srcField.getName().equals(dstField.getName())) {
                     try {
-                        AccessibleObject.setAccessible(new Field[]{dstField, srcField}, true);
+                        AccessibleObject.setAccessible(new Field[] { dstField, srcField }, true);
                     } catch (final RuntimeException re) {
                         // do nothing
                     }
