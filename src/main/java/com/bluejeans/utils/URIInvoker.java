@@ -28,6 +28,7 @@ import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ClassUtils;
 
+import com.bluejeans.utils.InvokerMBean.Invoker;
 import com.google.gson.internal.Primitives;
 
 /**
@@ -35,7 +36,7 @@ import com.google.gson.internal.Primitives;
  *
  * @author Dinesh Ilindra
  */
-public class URIInvoker {
+public class URIInvoker extends Invoker {
 
 	/**
 	 * The size step suffixes
