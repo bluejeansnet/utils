@@ -7,11 +7,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
 
-import javax.management.JMException;
-
 import org.apache.commons.lang.ClassUtils;
-
-import com.bluejeans.utils.MetaUtil;
 
 /**
  * Invoker MBean
@@ -57,7 +53,7 @@ public interface InvokerMBean {
         public Invoker() {
             try {
                 MetaUtil.registerAsMBean(this);
-            } catch (final JMException jme) {
+            } catch (final Exception jme) {
                 // do nothing.
             }
         }
@@ -65,8 +61,7 @@ public interface InvokerMBean {
         /*
          * (non-Javadoc)
          *
-         * @see
-         * com.bluejeans.common.utils.InvokerMBean#runThis(java.lang.String,
+         * @see com.bluejeans.common.utils.InvokerMBean#runThis(java.lang.String,
          * java.lang.String[])
          */
         @Override
@@ -94,8 +89,7 @@ public interface InvokerMBean {
         /*
          * (non-Javadoc)
          *
-         * @see com.bjn.utils.InvokerMBean#printThis(java.lang.String,
-         * java.lang.String[])
+         * @see com.bjn.utils.InvokerMBean#printThis(java.lang.String, java.lang.String[])
          */
         @Override
         public String printThis(final String name, final String... args) {
