@@ -92,7 +92,7 @@ public class TheonClient<E extends Serializable> {
      * @param <E>
      *            the message type
      */
-    public static class TheonMessage<E> implements Serializable {
+    public static class TheonMessage<E extends Serializable> implements Serializable {
 
         private static final long serialVersionUID = 339681800724722659L;
 
