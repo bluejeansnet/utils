@@ -34,8 +34,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.bluejeans.utils.BulkOperationUtil;
-import com.bluejeans.utils.EnumCounter;
 import com.bluejeans.utils.BulkOperationUtil.BulkOperation;
+import com.bluejeans.utils.EnumCounter;
 
 /**
  * Theon client to post using bulk operations
@@ -44,7 +44,7 @@ import com.bluejeans.utils.BulkOperationUtil.BulkOperation;
  * @param <E>
  *            the entity type to post
  */
-public class TheonClient<E> {
+public class TheonClient<E extends Serializable> {
 
     private static final Logger logger = LoggerFactory.getLogger(TheonClient.class);
 
