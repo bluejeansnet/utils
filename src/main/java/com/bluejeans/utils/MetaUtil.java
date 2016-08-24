@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import javax.management.InstanceAlreadyExistsException;
 import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -116,8 +117,13 @@ public class MetaUtil {
      *             implicit
      */
     public static void registerAsMBean(final Object bean) throws JMException {
-        MetaUtil.registerAsMBean(bean,
-                bean.getClass().getPackage().getName() + ":type=" + bean.getClass().getSimpleName());
+        try {
+            MetaUtil.registerAsMBean(bean,
+                    bean.getClass().getPackage().getName() + ":type=" + bean.getClass().getSimpleName());
+        } catch (final InstanceAlreadyExistsException iaex) {
+            MetaUtil.registerAsMBean(bean, bean.getClass().getPackage().getName() + ":type="
+                    + bean.getClass().getSimpleName() + "-" + Integer.toHexString(bean.hashCode()));
+        }
     }
 
     /**

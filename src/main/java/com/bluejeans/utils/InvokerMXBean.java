@@ -5,6 +5,7 @@ package com.bluejeans.utils;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 
 import org.apache.commons.lang.ClassUtils;
@@ -14,20 +15,7 @@ import org.apache.commons.lang.ClassUtils;
  *
  * @author Dinesh Ilindra
  */
-public interface InvokerMBean {
-
-    /**
-     * Run any on this.
-     *
-     * @param name
-     *            the name
-     * @param args
-     *            the arguments
-     * @return the result
-     * @throws Exception
-     *             any problem
-     */
-    Object runThis(final String name, final String... args) throws Exception;
+public interface InvokerMXBean {
 
     /**
      * Print the value by running any on this.
@@ -45,7 +33,7 @@ public interface InvokerMBean {
      *
      * @author Dinesh Ilindra
      */
-    public static class Invoker implements InvokerMBean {
+    public static class Invoker implements InvokerMXBean {
 
         /**
          * Registers this as MBean.
@@ -54,17 +42,21 @@ public interface InvokerMBean {
             try {
                 MetaUtil.registerAsMBean(this);
             } catch (final Exception jme) {
-                // do nothing.
+                //jme.printStackTrace();
             }
         }
 
-        /*
-         * (non-Javadoc)
+        /**
+         * Run any on this.
          *
-         * @see com.bluejeans.common.utils.InvokerMBean#runThis(java.lang.String,
-         * java.lang.String[])
+         * @param name
+         *            the name
+         * @param args
+         *            the arguments
+         * @return the result
+         * @throws Exception
+         *             any problem
          */
-        @Override
         public Object runThis(final String name, final String... args) throws Exception {
             int len = 0;
             if (args != null) {
@@ -93,15 +85,23 @@ public interface InvokerMBean {
          */
         @Override
         public String printThis(final String name, final String... args) {
-            String val = null;
+            final StringBuilder val = new StringBuilder();
             try {
-                val = String.valueOf(runThis(name, args));
+                final Object result = runThis(name, args);
+                if (result.getClass().isArray()) {
+                    for (int index = 0; index < Array.getLength(result); index++) {
+                        val.append(Array.get(result, index));
+                        val.append("\n");
+                    }
+                } else {
+                    val.append(runThis(name, args));
+                }
             } catch (final Exception ex) {
                 final StringWriter sw = new StringWriter();
                 ex.printStackTrace(new PrintWriter(sw));
-                val = sw.toString();
+                val.append(sw);
             }
-            return val;
+            return val.toString();
         }
 
     }

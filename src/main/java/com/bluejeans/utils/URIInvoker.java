@@ -28,7 +28,7 @@ import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ClassUtils;
 
-import com.bluejeans.utils.InvokerMBean.Invoker;
+import com.bluejeans.utils.InvokerMXBean.Invoker;
 import com.google.gson.internal.Primitives;
 
 /**
@@ -364,7 +364,7 @@ public class URIInvoker extends Invoker {
     /*
      * (non-Javadoc)
      *
-     * @see com.bluejeans.utils.InvokerMBean.Invoker#runThis(java.lang.String, java.lang.String[])
+     * @see com.bluejeans.utils.InvokerMXBean.Invoker#runThis(java.lang.String, java.lang.String[])
      */
     @Override
     public Object runThis(final String name, final String... args) throws Exception {
