@@ -343,8 +343,9 @@ public class TheonClient<E extends Serializable> {
         }
         for (final String key : messagesMap.keySet()) {
             final List<E> messages = messagesMap.get(key);
+            final String postKey = key.indexOf(':') == -1?key:key.replaceAll(":", "_");
             for (final E message : messages) {
-                builder.append(key);
+                builder.append(postKey);
                 builder.append(':');
                 builder.append(message.toString());
                 builder.append("\r\n");

@@ -19,6 +19,7 @@ public class WebServer {
     /**
      * WebServer constructor.
      */
+    @SuppressWarnings("resource")
     public void start(final int port) {
         ServerSocket s;
         System.out.println("Webserver starting up on port " + port);
