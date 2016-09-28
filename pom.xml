@@ -4,7 +4,7 @@
 
 	<groupId>com.bluejeans</groupId>
 	<artifactId>utils</artifactId>
-	<version>1.1.1</version>
+	<version>1.1.2</version>
 	<packaging>jar</packaging>
 
 	<name>utils</name>
@@ -75,7 +75,7 @@
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpclient</artifactId>
-			<version>4.3.6</version>
+			<version>4.5.2</version>
 		</dependency>
 		<dependency>
 			<groupId>net.jodah</groupId>
