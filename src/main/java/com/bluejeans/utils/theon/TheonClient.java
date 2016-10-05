@@ -344,7 +344,9 @@ public class TheonClient<E extends Serializable> {
         for (final String key : messagesMap.keySet()) {
             final List<E> messages = messagesMap.get(key);
             String postKey = defaultKey;
-            if(key != null) {
+            if(key == null) {
+                logger.warn("Key is 'null' for below messages - \n\t" + messages);
+            } else {
                 postKey = key.indexOf(':') == -1?key:key.replaceAll(":", "_");
             }
             for (final E message : messages) {
