@@ -18,8 +18,8 @@ import org.slf4j.LoggerFactory;
 import com.bluejeans.bigqueue.BigArray;
 
 /**
- * Bulk operation utils for queuing elements and performing bulk operation on
- * them at once, interval based
+ * Bulk operation utils for queuing elements and performing bulk operation on them at once, interval
+ * based
  *
  * @author Dinesh Ilindra
  * @param <E>
@@ -33,6 +33,11 @@ public class BulkOperationUtil<E> {
          * do bulk error
          */
         DO_BULK_ERROR,
+
+        /**
+         * Internal error
+         */
+        INTERNAL_ERROR,
 
         /**
          * item added to queue
@@ -107,7 +112,8 @@ public class BulkOperationUtil<E> {
         this.doer = new Doer();
         queueAddFailCount = new AtomicLong();
         bulkExecutor = new ThreadPoolExecutor(bulkExecutorSize, bulkExecutorSize, 0, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<Runnable>(bulkExecutorQueueCapacity), new ThreadPoolExecutor.CallerRunsPolicy());
+                new LinkedBlockingQueue<Runnable>(bulkExecutorQueueCapacity),
+                new ThreadPoolExecutor.CallerRunsPolicy());
         this.queueDir = queueDir;
         this.queueName = queueName;
         this.bigQueueTimerInterval = bigQueueTimerInterval;
@@ -145,12 +151,12 @@ public class BulkOperationUtil<E> {
      *            the entity type
      * @return the created utility
      */
-    public static <E> BulkOperationUtil<E> create(final int bulkPollInterval, final int capacity,
-            final String queueDir, final String queueName, final long bigQueueTimerInterval,
-            final BulkOperation<E> bulkOperation, final int batchSize, final int bulkExecutorSize,
-            final int bulkExecutorQueueCapacity) {
+    public static <E> BulkOperationUtil<E> create(final int bulkPollInterval, final int capacity, final String queueDir,
+            final String queueName, final long bigQueueTimerInterval, final BulkOperation<E> bulkOperation,
+            final int batchSize, final int bulkExecutorSize, final int bulkExecutorQueueCapacity) {
         final BulkOperationUtil<E> bulkOperationUtil = new BulkOperationUtil<E>(bulkPollInterval, capacity, queueDir,
-                queueName, bigQueueTimerInterval, bulkOperation, batchSize, bulkExecutorSize, bulkExecutorQueueCapacity);
+                queueName, bigQueueTimerInterval, bulkOperation, batchSize, bulkExecutorSize,
+                bulkExecutorQueueCapacity);
         bulkOperationUtil.doer.start();
         return bulkOperationUtil;
     }
@@ -266,6 +272,10 @@ public class BulkOperationUtil<E> {
                 try {
                     bulkOperation.doBulk(coll);
                     success = true;
+                } catch (final NullPointerException npe) {
+                    success = true;
+                    bulkStatusCounter.incrementEventCount(BulkStatus.INTERNAL_ERROR);
+                    logger.error("Internal Error", npe);
                 } catch (final RuntimeException ex) {
                     bulkStatusCounter.incrementEventCount(BulkStatus.DO_BULK_ERROR);
                     logger.error("Error in bulk operation {}", ex);
