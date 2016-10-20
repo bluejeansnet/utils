@@ -11,6 +11,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.Socket;
+import java.rmi.registry.LocateRegistry;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,6 +24,9 @@ import javax.management.InstanceAlreadyExistsException;
 import javax.management.JMException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
+import javax.management.remote.JMXConnectorServer;
+import javax.management.remote.JMXConnectorServerFactory;
+import javax.management.remote.JMXServiceURL;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -641,7 +645,7 @@ public class MetaUtil {
      * @param obj
      *            the object
      */
-    public void assignFromHierarchy(final Object obj) {
+    public static void assignFromHierarchy(final Object obj) {
         final Class<?> dstClass = obj.getClass();
         final Field[] declaredFields = dstClass.getDeclaredFields();
         final List<Field> superFields = allSuperFieldsOf(obj.getClass());
@@ -673,7 +677,7 @@ public class MetaUtil {
      * @param src
      *            the source object
      */
-    public void copyFields(final Object dst, final Object src) {
+    public static void copyFields(final Object dst, final Object src) {
         final List<Field> dstFields = allFieldsOf(dst.getClass());
         final List<Field> srcFields = allFieldsOf(src.getClass());
         for (final Field dstField : dstFields) {
@@ -693,6 +697,33 @@ public class MetaUtil {
                 }
             }
         }
+    }
+
+    /**
+     * Enable JMX
+     */
+    public static int enableJmx() throws IOException {
+        final int port = availablePort(9001, 100);
+        enableJmx(port);
+        return port;
+    }
+
+    /**
+     * Enable JMX
+     *
+     * @throws IOException
+     *             if anything goes wrong
+     */
+    public static void enableJmx(final int port) throws IOException {
+        LocateRegistry.createRegistry(port);
+        final MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+        final Map<String, Object> env = new HashMap<String, Object>();
+        env.put("com.sun.management.jmxremote.authenticate", "false");
+        env.put("com.sun.management.jmxremote.local.only", "false");
+        env.put("com.sun.management.jmxremote.ssl", "false");
+        final JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://:" + port + "/jmxrmi");
+        final JMXConnectorServer svr = JMXConnectorServerFactory.newJMXConnectorServer(url, env, mbs);
+        svr.start();
     }
 
 }
