@@ -3,6 +3,10 @@
  */
 package com.bluejeans.utils;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
@@ -19,6 +23,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.jar.Attributes;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.JMException;
@@ -724,6 +732,131 @@ public class MetaUtil {
         final JMXServiceURL url = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://:" + port + "/jmxrmi");
         final JMXConnectorServer svr = JMXConnectorServerFactory.newJMXConnectorServer(url, env, mbs);
         svr.start();
+    }
+
+    /**
+     * Fetch the class definition bytes
+     *
+     * @throws IOException
+     */
+    public static byte[] fetchClassDefinitionBytes(final Class<?> clazz) throws IOException {
+        return IOUtils.toByteArray(clazz.getResourceAsStream(clazz.getSimpleName() + ".class"));
+    }
+
+    /**
+     * Write class definition to file
+     */
+    public static File writeClassDefinition(final String folder, final Class<?> clazz) throws IOException {
+        final File parent = new File(folder + "/" + clazz.getPackage().getName().replaceAll("\\.", "/"));
+        parent.mkdirs();
+        final File file = new File(parent, clazz.getSimpleName() + ".class");
+        final FileOutputStream fos = new FileOutputStream(file);
+        fos.write(fetchClassDefinitionBytes(clazz));
+        fos.flush();
+        fos.close();
+        return file;
+    }
+
+    /**
+     * Write class definition to file
+     */
+    public static void writeClassDefinitions(final String folder, final Class<?>... clazzes) throws IOException {
+        for (final Class<?> clazz : clazzes) {
+            writeClassDefinition(folder, clazz);
+        }
+    }
+
+    /**
+     * add source to jar stream
+     *
+     * @param source
+     * @param jarStream
+     * @throws IOException
+     */
+    public static void addSourceToJarStream(final String prefix, final File source, final JarOutputStream jarStream,
+            final String jarName) throws IOException {
+        BufferedInputStream in = null;
+        try {
+            if (source.isDirectory()) {
+                String name = source.getPath().replace("\\", "/");
+                if (!name.endsWith("/")) {
+                    name += "/";
+                }
+                name = name.replace(prefix, "");
+                if (!name.isEmpty()) {
+                    final JarEntry entry = new JarEntry(name);
+                    entry.setTime(source.lastModified());
+                    jarStream.putNextEntry(entry);
+                    jarStream.closeEntry();
+                }
+                for (final File nestedFile : source.listFiles()) {
+                    addSourceToJarStream(prefix, nestedFile, jarStream, jarName);
+                }
+                return;
+            }
+            final String name = source.getPath().replace("\\", "/").replace(prefix, "");
+            if (!name.equals(jarName + ".jar")) {
+                final JarEntry entry = new JarEntry(name);
+                entry.setTime(source.lastModified());
+                jarStream.putNextEntry(entry);
+                in = new BufferedInputStream(new FileInputStream(source));
+                final byte[] buffer = new byte[1024];
+                while (true) {
+                    final int count = in.read(buffer);
+                    if (count == -1) {
+                        break;
+                    }
+                    jarStream.write(buffer, 0, count);
+                }
+                jarStream.closeEntry();
+            }
+        } finally {
+            if (in != null) {
+                in.close();
+            }
+        }
+    }
+
+    /**
+     * create jar from source dir into destination dir
+     *
+     * @param srcDir
+     * @param dstDir
+     * @param name
+     * @param attributes
+     * @return
+     * @throws IOException
+     */
+    public static File createJarFromDir(final String srcDir, final String dstDir, final String name,
+            final Map<String, String> attributes) throws IOException {
+        final Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+        if (attributes != null) {
+            for (final String key : attributes.keySet()) {
+                manifest.getMainAttributes().put(new Attributes.Name(key), attributes.get(key));
+            }
+        }
+        final File jarFile = new File(dstDir, name + ".jar");
+        final JarOutputStream jarStream = new JarOutputStream(new FileOutputStream(jarFile), manifest);
+        addSourceToJarStream(srcDir + "/", new File(srcDir), jarStream, name);
+        jarStream.close();
+        return jarFile;
+    }
+
+    /**
+     * create jar from class definitions
+     *
+     * @param folder
+     * @param jarName
+     * @param attributes
+     * @param clazzes
+     * @return
+     * @throws IOException
+     */
+    public static File createJarFromClasses(final String folder, final String jarName,
+            final Map<String, String> attributes, final Class<?>... clazzes) throws IOException {
+        writeClassDefinitions(folder, clazzes);
+        return createJarFromDir(folder, folder, jarName, attributes);
     }
 
 }
