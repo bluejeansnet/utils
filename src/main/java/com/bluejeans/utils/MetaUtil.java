@@ -820,7 +820,7 @@ public class MetaUtil {
                     name += "/";
                 }
                 name = name.replace(prefix, "");
-                if (!name.isEmpty() && !name.equals("META-INF/MANIFEST.MF")) {
+                if (!name.isEmpty()) {
                     final JarEntry entry = new JarEntry(name);
                     entry.setTime(source.lastModified());
                     jarStream.putNextEntry(entry);
@@ -832,7 +832,7 @@ public class MetaUtil {
                 return;
             }
             final String name = source.getPath().replace("\\", "/").replace(prefix, "");
-            if (!name.equals(jarName + ".jar")) {
+            if (!name.equals(jarName + ".jar") && !name.equals("META-INF/MANIFEST.MF")) {
                 final JarEntry entry = new JarEntry(name);
                 entry.setTime(source.lastModified());
                 jarStream.putNextEntry(entry);
