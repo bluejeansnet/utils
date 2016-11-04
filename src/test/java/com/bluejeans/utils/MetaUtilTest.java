@@ -7,7 +7,8 @@ import java.io.IOException;
 
 import org.junit.Test;
 
-import com.bluejeans.utils.javaagent.BootstrapAgent;
+import com.bluejeans.utils.javaagent.AgentTest;
+import com.bluejeans.utils.javaagent.DurationTransformer;
 
 /**
  * @author Dinesh Ilindra
@@ -17,12 +18,10 @@ public class MetaUtilTest {
 
     @Test
     public void testClassBytes() throws IOException {
-        System.out.println(MetaUtil.createJarFromClasses(EnumCounter.class, "/tmp/test/classes", "testJar",
-                MetaUtil.createPropsMap("Can-Redefine-Classes=true", "Can-Retransform-Classes=true",
-                        "Premain-Class=" + BootstrapAgent.class.getName(),
-                        "Agent-Class=" + BootstrapAgent.class.getName()),
-                MetaUtil.class, BootstrapAgent.class));
-
+        System.out.println(MetaUtil.createJarFromClasses(MetaUtil.class,
+                "/tmp/test/agent", "agenttest", MetaUtil.createPropsMap("Can-Redefine-Classes=true",
+                        "Can-Retransform-Classes=true", "Agent-Class=" + AgentTest.class.getName()),
+                AgentTest.class, DurationTransformer.class));
     }
 
     /**
