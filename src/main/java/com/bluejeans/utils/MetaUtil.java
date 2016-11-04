@@ -15,6 +15,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.Socket;
+import java.net.URL;
 import java.rmi.registry.LocateRegistry;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
@@ -43,6 +44,8 @@ import javax.script.ScriptException;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ClassUtils;
+import org.apache.commons.net.ftp.FTP;
+import org.apache.commons.net.ftp.FTPClient;
 
 import com.google.common.base.CaseFormat;
 
@@ -739,8 +742,32 @@ public class MetaUtil {
      *
      * @throws IOException
      */
+    public static byte[] fetchClassDefinitionBytes(final Class<?> loader, final Class<?> clazz) throws IOException {
+        return IOUtils.toByteArray(loader.getResourceAsStream("/" + clazz.getName().replace(".", "/") + ".class"));
+    }
+
+    /**
+     * Fetch the class definition bytes
+     *
+     * @throws IOException
+     */
     public static byte[] fetchClassDefinitionBytes(final Class<?> clazz) throws IOException {
         return IOUtils.toByteArray(clazz.getResourceAsStream(clazz.getSimpleName() + ".class"));
+    }
+
+    /**
+     * Write class definition to file
+     */
+    public static File writeClassDefinition(final Class<?> loader, final String folder, final Class<?> clazz)
+            throws IOException {
+        final File parent = new File(folder + "/" + clazz.getPackage().getName().replace(".", "/"));
+        parent.mkdirs();
+        final File file = new File(parent, clazz.getSimpleName() + ".class");
+        final FileOutputStream fos = new FileOutputStream(file);
+        fos.write(fetchClassDefinitionBytes(loader, clazz));
+        fos.flush();
+        fos.close();
+        return file;
     }
 
     /**
@@ -755,6 +782,16 @@ public class MetaUtil {
         fos.flush();
         fos.close();
         return file;
+    }
+
+    /**
+     * Write class definition to file
+     */
+    public static void writeClassDefinitions(final Class<?> loader, final String folder, final Class<?>... clazzes)
+            throws IOException {
+        for (final Class<?> clazz : clazzes) {
+            writeClassDefinition(loader, folder, clazz);
+        }
     }
 
     /**
@@ -853,10 +890,97 @@ public class MetaUtil {
      * @return
      * @throws IOException
      */
+    public static File createJarFromClasses(final Class<?> loader, final String folder, final String jarName,
+            final Map<String, String> attributes, final Class<?>... clazzes) throws IOException {
+        writeClassDefinitions(loader, folder, clazzes);
+        return createJarFromDir(folder, folder, jarName, attributes);
+    }
+
+    /**
+     * create jar from class definitions
+     *
+     * @param folder
+     * @param jarName
+     * @param attributes
+     * @param clazzes
+     * @return
+     * @throws IOException
+     */
     public static File createJarFromClasses(final String folder, final String jarName,
             final Map<String, String> attributes, final Class<?>... clazzes) throws IOException {
         writeClassDefinitions(folder, clazzes);
         return createJarFromDir(folder, folder, jarName, attributes);
+    }
+
+    /**
+     * upload to ftp
+     *
+     * @param ftpUrl
+     * @param local
+     * @param remote
+     * @throws IOException
+     */
+    public static boolean ftpUpload(final String ftpUrl, final String local, final String remote) throws IOException {
+        return ftpUpload(ftpUrl, local, remote, false);
+    }
+
+    /**
+     * upload to ftp
+     *
+     * @param ftpUrl
+     * @param local
+     * @param remote
+     * @param reccursive
+     * @throws IOException
+     */
+    public static boolean ftpUpload(final String ftpUrl, final String local, final String remote,
+            final boolean reccursive) throws IOException {
+        boolean status = false;
+        final FTPClient ftpClient = new FTPClient();
+        try {
+            final URL url = new URL(ftpUrl);
+            ftpClient.connect(url.getHost(), url.getPort());
+            final String[] userInfo = url.getUserInfo().split(":");
+            ftpClient.login(userInfo[0], userInfo[1]);
+            ftpClient.enterLocalPassiveMode();
+            ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
+            status = ftpUpload(ftpClient, new File(local), remote, reccursive);
+        } finally {
+            if (ftpClient.isConnected()) {
+                ftpClient.logout();
+                ftpClient.disconnect();
+            }
+        }
+        return status;
+    }
+
+    /**
+     * ftp upload reccursive
+     *
+     * @param ftpClient
+     * @param local
+     * @param remote
+     * @param reccursive
+     * @return
+     * @throws IOException
+     */
+    public static boolean ftpUpload(final FTPClient ftpClient, final File local, final String remote,
+            final boolean reccursive) throws IOException {
+        boolean status = false;
+        if (local.isDirectory()) {
+            final File[] files = local.listFiles();
+            for (final File file : files) {
+                if (file.isDirectory() && reccursive || file.isFile()) {
+                    status &= ftpUpload(ftpClient, file,
+                            remote + (remote.endsWith("/") ? "" : "/") + local.getName() + "/", reccursive);
+                }
+            }
+        } else {
+            final FileInputStream fis = new FileInputStream(local);
+            status = ftpClient.storeFile(remote.endsWith("/") ? remote + local.getName() : remote, fis);
+            fis.close();
+        }
+        return status;
     }
 
 }

@@ -17,7 +17,7 @@ public class MetaUtilTest {
 
     @Test
     public void testClassBytes() throws IOException {
-        System.out.println(MetaUtil.createJarFromClasses("/tmp/test/classes", "testJar",
+        System.out.println(MetaUtil.createJarFromClasses(EnumCounter.class, "/tmp/test/classes", "testJar",
                 MetaUtil.createPropsMap("Can-Redefine-Classes=true", "Can-Retransform-Classes=true",
                         "Premain-Class=" + BootstrapAgent.class.getName(),
                         "Agent-Class=" + BootstrapAgent.class.getName()),
