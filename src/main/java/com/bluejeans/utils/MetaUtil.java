@@ -873,6 +873,8 @@ public class MetaUtil {
                 manifest.getMainAttributes().put(new Attributes.Name(key), attributes.get(key));
             }
         }
+        final File parent = new File(dstDir);
+        parent.mkdirs();
         final File jarFile = new File(dstDir, name + ".jar");
         final JarOutputStream jarStream = new JarOutputStream(new FileOutputStream(jarFile), manifest);
         addSourceToJarStream(srcDir + "/", new File(srcDir), jarStream, name);
