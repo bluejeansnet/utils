@@ -820,7 +820,7 @@ public class MetaUtil {
                     name += "/";
                 }
                 name = name.replace(prefix, "");
-                if (!name.isEmpty()) {
+                if (!name.isEmpty() && !name.equals("META-INF/MANIFEST.MF")) {
                     final JarEntry entry = new JarEntry(name);
                     entry.setTime(source.lastModified());
                     jarStream.putNextEntry(entry);
