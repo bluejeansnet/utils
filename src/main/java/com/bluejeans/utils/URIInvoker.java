@@ -47,6 +47,8 @@ public class URIInvoker extends Invoker {
 
     private final SystemInfo system;
 
+    private final MetaUtil metaUtil;
+
     private final ConvertUtilsBean convertUtil;
 
     private ScriptEngine jsEngine;
@@ -73,8 +75,10 @@ public class URIInvoker extends Invoker {
      */
     public URIInvoker(final Map<String, Object> targetMap) {
         system = new SystemInfo();
+        metaUtil = new MetaUtil();
         this.targetMap = new HashMap<String, Object>();
         this.targetMap.put("system", system);
+        this.targetMap.put("metaUtil", metaUtil);
         convertUtil = new ConvertUtilsBean();
         resetJsEngine();
     }
