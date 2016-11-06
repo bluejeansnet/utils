@@ -31,11 +31,6 @@ public class AgentTest {
      */
     public static void agentmain(final String agentArgs, final Instrumentation inst) {
         instrumentation = inst;
-        try {
-            apply();
-        } catch (final UnmodifiableClassException e) {
-            e.printStackTrace();
-        }
     }
 
     public static void apply() throws UnmodifiableClassException {
