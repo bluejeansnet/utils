@@ -106,9 +106,22 @@ public class MetaUtil {
      * @return the bytes value
      */
     public static byte[] getResourceAsBytes(final String resourceName) {
+        return getResourceAsBytes(MetaUtil.class, resourceName);
+    }
+
+    /**
+     * Get the resource as bytes.
+     *
+     * @param resourceName
+     *            the resource name
+     * @param loader
+     *            the class loader
+     * @return the bytes value
+     */
+    public static byte[] getResourceAsBytes(final Class<?> loader, final String resourceName) {
         InputStream resourceStream = null;
         try {
-            resourceStream = MetaUtil.class.getResourceAsStream(resourceName);
+            resourceStream = loader.getResourceAsStream(resourceName);
             return IOUtils.toByteArray(resourceStream);
         } catch (final IOException e) {
             return new byte[0];
@@ -983,6 +996,15 @@ public class MetaUtil {
             fis.close();
         }
         return status;
+    }
+
+    public static void extractResource(final Class<?> loader, final String resourceName, final String folder)
+            throws IOException {
+        final File parent = new File(folder);
+        parent.mkdirs();
+        final FileOutputStream fos = new FileOutputStream(new File(parent, resourceName));
+        fos.write(getResourceAsBytes(loader, resourceName));
+        fos.close();
     }
 
 }
