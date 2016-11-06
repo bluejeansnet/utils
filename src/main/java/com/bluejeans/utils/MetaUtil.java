@@ -998,6 +998,14 @@ public class MetaUtil {
         return status;
     }
 
+    /**
+     * extract a resource
+     *
+     * @param loader
+     * @param resourceName
+     * @param folder
+     * @throws IOException
+     */
     public static void extractResource(final Class<?> loader, final String resourceName, final String folder)
             throws IOException {
         final File parent = new File(folder);
