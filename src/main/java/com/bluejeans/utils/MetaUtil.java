@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.instrument.Instrumentation;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
@@ -1013,6 +1014,24 @@ public class MetaUtil {
         final FileOutputStream fos = new FileOutputStream(new File(parent, resourceName));
         fos.write(getResourceAsBytes(loader, resourceName));
         fos.close();
+    }
+
+    /**
+     * get loaded classes by name from instrumentation
+     *
+     * @param instr
+     * @param className
+     * @return
+     */
+    public static List<Class<?>> getLoadedClassesByName(final Instrumentation instr, final String className) {
+        final List<Class<?>> classList = new ArrayList<>();
+        final Class<?>[] classes = instr.getAllLoadedClasses();
+        for (final Class<?> clazz : classes) {
+            if (clazz.getName().equals(className)) {
+                classList.add(clazz);
+            }
+        }
+        return classList;
     }
 
 }
