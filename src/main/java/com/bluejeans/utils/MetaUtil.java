@@ -4,11 +4,14 @@
 package com.bluejeans.utils;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.AccessibleObject;
@@ -19,6 +22,7 @@ import java.net.Socket;
 import java.net.URL;
 import java.rmi.registry.LocateRegistry;
 import java.security.GeneralSecurityException;
+import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -49,6 +53,10 @@ import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 
 import com.google.common.base.CaseFormat;
+
+import javassist.ClassPool;
+import javassist.CtClass;
+import javassist.CtMethod;
 
 /**
  * Meta utility.
@@ -754,7 +762,14 @@ public class MetaUtil {
     /**
      * Fetch the class definition bytes
      *
+     * @param loader
+     *            the loader
+     * @param clazz
+     *            the class
+     * @return the bytes
+     *
      * @throws IOException
+     *             if problem
      */
     public static byte[] fetchClassDefinitionBytes(final Class<?> loader, final Class<?> clazz) throws IOException {
         return IOUtils.toByteArray(loader.getResourceAsStream("/" + clazz.getName().replace(".", "/") + ".class"));
@@ -763,14 +778,29 @@ public class MetaUtil {
     /**
      * Fetch the class definition bytes
      *
+     * @param clazz
+     *            the class
+     * @return the bytes
+     *
      * @throws IOException
+     *             if problem
      */
     public static byte[] fetchClassDefinitionBytes(final Class<?> clazz) throws IOException {
-        return IOUtils.toByteArray(clazz.getResourceAsStream(clazz.getSimpleName() + ".class"));
+        return fetchClassDefinitionBytes(clazz, clazz);
     }
 
     /**
      * Write class definition to file
+     *
+     * @param loader
+     *            the loader
+     * @param clazz
+     *            the class
+     * @param folder
+     *            the folder
+     * @throws IOException
+     *             if problem
+     * @return the file
      */
     public static File writeClassDefinition(final Class<?> loader, final String folder, final Class<?> clazz)
             throws IOException {
@@ -786,6 +816,14 @@ public class MetaUtil {
 
     /**
      * Write class definition to file
+     *
+     * @param clazz
+     *            the class
+     * @param folder
+     *            the folder
+     * @throws IOException
+     *             if problem
+     * @return the file
      */
     public static File writeClassDefinition(final String folder, final Class<?> clazz) throws IOException {
         final File parent = new File(folder + "/" + clazz.getPackage().getName().replaceAll("\\.", "/"));
@@ -800,6 +838,15 @@ public class MetaUtil {
 
     /**
      * Write class definition to file
+     *
+     * @param loader
+     *            the loader
+     * @param clazzes
+     *            the classes
+     * @param folder
+     *            the folder
+     * @throws IOException
+     *             if problem
      */
     public static void writeClassDefinitions(final Class<?> loader, final String folder, final Class<?>... clazzes)
             throws IOException {
@@ -810,6 +857,13 @@ public class MetaUtil {
 
     /**
      * Write class definition to file
+     *
+     * @param clazzes
+     *            the classes
+     * @param folder
+     *            the folder
+     * @throws IOException
+     *             if problem
      */
     public static void writeClassDefinitions(final String folder, final Class<?>... clazzes) throws IOException {
         for (final Class<?> clazz : clazzes) {
@@ -821,8 +875,15 @@ public class MetaUtil {
      * add source to jar stream
      *
      * @param source
+     *            the source
      * @param jarStream
+     *            the stream
+     * @param prefix
+     *            the prefix
+     * @param jarName
+     *            the jar name
      * @throws IOException
+     *             if problem
      */
     public static void addSourceToJarStream(final String prefix, final File source, final JarOutputStream jarStream,
             final String jarName) throws IOException {
@@ -872,11 +933,16 @@ public class MetaUtil {
      * create jar from source dir into destination dir
      *
      * @param srcDir
+     *            the source
      * @param dstDir
+     *            the dest
      * @param name
+     *            the name
      * @param attributes
-     * @return
+     *            the attributes
+     * @return the file
      * @throws IOException
+     *             if problem
      */
     public static File createJarFromDir(final String srcDir, final String dstDir, final String name,
             final Map<String, String> attributes) throws IOException {
@@ -900,11 +966,16 @@ public class MetaUtil {
      * create jar from class definitions
      *
      * @param folder
+     *            the folder
      * @param jarName
+     *            the jar name
      * @param attributes
+     *            the attributes
      * @param clazzes
-     * @return
+     *            the classes
+     * @return the file
      * @throws IOException
+     *             if problem
      */
     public static File createJarFromClasses(final Class<?> loader, final String folder, final String jarName,
             final Map<String, String> attributes, final Class<?>... clazzes) throws IOException {
@@ -916,11 +987,16 @@ public class MetaUtil {
      * create jar from class definitions
      *
      * @param folder
+     *            the folder
      * @param jarName
+     *            the jar name
      * @param attributes
+     *            the attributes
      * @param clazzes
-     * @return
+     *            the classes
+     * @return the file
      * @throws IOException
+     *             if problem
      */
     public static File createJarFromClasses(final String folder, final String jarName,
             final Map<String, String> attributes, final Class<?>... clazzes) throws IOException {
@@ -932,9 +1008,14 @@ public class MetaUtil {
      * upload to ftp
      *
      * @param ftpUrl
+     *            the url
      * @param local
+     *            the local
      * @param remote
+     *            the remote
+     * @return the status
      * @throws IOException
+     *             if problem
      */
     public static boolean ftpUpload(final String ftpUrl, final String local, final String remote) throws IOException {
         return ftpUpload(ftpUrl, local, remote, false);
@@ -944,13 +1025,19 @@ public class MetaUtil {
      * upload to ftp
      *
      * @param ftpUrl
+     *            the url
      * @param local
+     *            the local
      * @param remote
-     * @param reccursive
+     *            the remote
+     * @param recursive
+     *            if recursive
+     * @return the status
      * @throws IOException
+     *             if problem
      */
     public static boolean ftpUpload(final String ftpUrl, final String local, final String remote,
-            final boolean reccursive) throws IOException {
+            final boolean recursive) throws IOException {
         boolean status = false;
         final FTPClient ftpClient = new FTPClient();
         try {
@@ -960,7 +1047,7 @@ public class MetaUtil {
             ftpClient.login(userInfo[0], userInfo[1]);
             ftpClient.enterLocalPassiveMode();
             ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
-            status = ftpUpload(ftpClient, new File(local), remote, reccursive);
+            status = ftpUpload(ftpClient, new File(local), remote, recursive);
         } finally {
             if (ftpClient.isConnected()) {
                 ftpClient.logout();
@@ -971,24 +1058,29 @@ public class MetaUtil {
     }
 
     /**
-     * ftp upload reccursive
+     * ftp upload recursive
      *
      * @param ftpClient
+     *            the client
      * @param local
+     *            the local
      * @param remote
-     * @param reccursive
-     * @return
+     *            the remote
+     * @param recursive
+     *            if recursive
+     * @return the status
      * @throws IOException
+     *             if problem
      */
     public static boolean ftpUpload(final FTPClient ftpClient, final File local, final String remote,
-            final boolean reccursive) throws IOException {
+            final boolean recursive) throws IOException {
         boolean status = false;
         if (local.isDirectory()) {
             final File[] files = local.listFiles();
             for (final File file : files) {
-                if (file.isDirectory() && reccursive || file.isFile()) {
+                if (file.isDirectory() && recursive || file.isFile()) {
                     status &= ftpUpload(ftpClient, file,
-                            remote + (remote.endsWith("/") ? "" : "/") + local.getName() + "/", reccursive);
+                            remote + (remote.endsWith("/") ? "" : "/") + local.getName() + "/", recursive);
                 }
             }
         } else {
@@ -1003,9 +1095,13 @@ public class MetaUtil {
      * extract a resource
      *
      * @param loader
+     *            the loader
      * @param resourceName
+     *            the name
      * @param folder
+     *            the folder
      * @throws IOException
+     *             if problem
      */
     public static void extractResource(final Class<?> loader, final String resourceName, final String folder)
             throws IOException {
@@ -1020,8 +1116,10 @@ public class MetaUtil {
      * get loaded classes by name from instrumentation
      *
      * @param instr
+     *            the instrumentation
      * @param className
-     * @return
+     *            the name
+     * @return the classes
      */
     public static List<Class<?>> getLoadedClassesByName(final Instrumentation instr, final String className) {
         final List<Class<?>> classList = new ArrayList<>();
@@ -1032,6 +1130,98 @@ public class MetaUtil {
             }
         }
         return classList;
+    }
+
+    /**
+     * @param instr
+     *            the instrumentation
+     * @param fqcn
+     *            the class name
+     * @param methodName
+     *            the method name
+     * @param argLength
+     *            the arg length
+     * @param logic
+     *            the logic
+     * @throws Exception
+     *             if problem
+     */
+    public static void appendLogic(final Instrumentation instr, final String fqcn, final String methodName,
+            final int argLength, final String logic) throws Exception {
+        addLogic(instr, fqcn, methodName, argLength, "append", logic);
+    }
+
+    /**
+     * @param instr
+     *            the instrumentation
+     * @param fqcn
+     *            the class name
+     * @param methodName
+     *            the method name
+     * @param argLength
+     *            the arg length
+     * @param logic
+     *            the logic
+     * @throws Exception
+     *             if problem
+     */
+    public static void prependLogic(final Instrumentation instr, final String fqcn, final String methodName,
+            final int argLength, final String logic) throws Exception {
+        addLogic(instr, fqcn, methodName, argLength, "prepend", logic);
+    }
+
+    /**
+     * @param instr
+     *            the instrumentation
+     * @param fqcn
+     *            the class name
+     * @param methodName
+     *            the method name
+     * @param argLength
+     *            the arg length
+     * @param mode
+     *            the mode
+     * @param logic
+     *            the logic
+     * @throws Exception
+     *             if problem
+     */
+    public static void addLogic(final Instrumentation instr, final String fqcn, final String methodName,
+            final int argLength, final String mode, final String logic) throws Exception {
+        final ClassFileTransformer transformer = new ClassFileTransformer() {
+            @Override
+            public byte[] transform(final ClassLoader loader, final String className,
+                    final Class<?> classBeingRedefined, final ProtectionDomain protectionDomain,
+                    final byte[] classfileBuffer) throws IllegalClassFormatException {
+                byte[] byteCode = classfileBuffer;
+                if (className.equals(fqcn.replace('.', '/'))) {
+                    try {
+                        final ClassPool classPool = ClassPool.getDefault();
+                        final CtClass ctClass = classPool.makeClass(new ByteArrayInputStream(classfileBuffer));
+                        final CtMethod[] methods = ctClass.getDeclaredMethods();
+                        for (final CtMethod method : methods) {
+                            if (method.getName().equals(methodName) && method.getParameterTypes().length == argLength) {
+                                if ("prepend".equalsIgnoreCase(mode)) {
+                                    method.insertBefore(logic);
+                                } else if ("append".equalsIgnoreCase(mode)) {
+                                    method.insertAfter(logic);
+                                } else {
+                                    method.insertAt(Integer.parseInt(mode), logic);
+                                }
+                            }
+                        }
+                        byteCode = ctClass.toBytecode();
+                        ctClass.detach();
+                    } catch (final Exception ex) {
+                        // do nothing
+                    }
+                }
+                return byteCode;
+            }
+        };
+        instr.addTransformer(transformer, true);
+        instr.retransformClasses(Class.forName(fqcn));
+        instr.removeTransformer(transformer);
     }
 
 }

@@ -137,16 +137,22 @@ public class BulkOperationUtil<E> {
      *
      * @param bulkPollInterval
      *            the poll interval
+     * @param capacity
+     *            the queue capacity
      * @param queueDir
      *            the queue directory
      * @param queueName
      *            the queue name
+     * @param bigQueueTimerInterval
+     *            the bigQueueTimerInterval
      * @param bulkOperation
      *            the bulk operation itself
      * @param batchSize
      *            the drain batch size
      * @param bulkExecutorSize
      *            the bulk executor size
+     * @param bulkExecutorQueueCapacity
+     *            the bulkExecutorQueueCapacity
      * @param <E>
      *            the entity type
      * @return the created utility
@@ -170,6 +176,12 @@ public class BulkOperationUtil<E> {
      *            the queue capacity
      * @param bulkOperation
      *            the bulk operation itself
+     * @param batchSize
+     *            the drain batch size
+     * @param bulkExecutorSize
+     *            the bulk executor size
+     * @param bulkExecutorQueueCapacity
+     *            the bulkExecutorQueueCapacity
      * @param <E>
      *            the entity type
      * @return the created utility
