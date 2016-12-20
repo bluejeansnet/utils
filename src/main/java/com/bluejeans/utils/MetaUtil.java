@@ -25,6 +25,7 @@ import java.security.GeneralSecurityException;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -848,6 +849,25 @@ public class MetaUtil {
      * @throws IOException
      *             if problem
      */
+    public static void writeClassDefinitions(final Class<?> loader, final String folder, final List<Class<?>> clazzes)
+            throws IOException {
+        for (final Class<?> clazz : clazzes) {
+            writeClassDefinition(loader, folder, clazz);
+        }
+    }
+
+    /**
+     * Write class definition to file
+     *
+     * @param loader
+     *            the loader
+     * @param clazzes
+     *            the classes
+     * @param folder
+     *            the folder
+     * @throws IOException
+     *             if problem
+     */
     public static void writeClassDefinitions(final Class<?> loader, final String folder, final Class<?>... clazzes)
             throws IOException {
         for (final Class<?> clazz : clazzes) {
@@ -960,6 +980,27 @@ public class MetaUtil {
         addSourceToJarStream(srcDir + "/", new File(srcDir), jarStream, name);
         jarStream.close();
         return jarFile;
+    }
+
+    /**
+     * create jar from class definitions
+     *
+     * @param folder
+     *            the folder
+     * @param jarName
+     *            the jar name
+     * @param attributes
+     *            the attributes
+     * @param clazzes
+     *            the classes
+     * @return the file
+     * @throws IOException
+     *             if problem
+     */
+    public static File createJarFromClasses(final Class<?> loader, final String folder, final String jarName,
+            final Map<String, String> attributes, final List<Class<?>> clazzes) throws IOException {
+        writeClassDefinitions(loader, folder, clazzes);
+        return createJarFromDir(folder, folder, jarName, attributes);
     }
 
     /**
@@ -1222,6 +1263,66 @@ public class MetaUtil {
         instr.addTransformer(transformer, true);
         instr.retransformClasses(Class.forName(fqcn));
         instr.removeTransformer(transformer);
+    }
+
+    /**
+     * Scans all classes accessible from the context class loader which belong to the given package
+     * and sub packages.
+     *
+     * @param packageName
+     *            The base package
+     * @return The classes
+     * @throws ClassNotFoundException
+     * @throws IOException
+     *             if problem
+     */
+    public static List<Class<?>> getClasses(final String packageName) throws ClassNotFoundException, IOException {
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        if (classLoader == null) {
+            classLoader = ClassLoader.getSystemClassLoader();
+        }
+        final String path = packageName.replace('.', '/');
+        final Enumeration<URL> resources = classLoader.getResources(path);
+        final List<File> dirs = new ArrayList<>();
+        while (resources.hasMoreElements()) {
+            final URL resource = resources.nextElement();
+            dirs.add(new File(resource.getFile()));
+        }
+        final List<Class<?>> classes = new ArrayList<>();
+        for (final File directory : dirs) {
+            classes.addAll(findClasses(directory, packageName));
+        }
+        return classes;
+    }
+
+    /**
+     * Recursive method used to find all classes in a given directory and sub dirs.
+     *
+     * @param directory
+     *            The base directory
+     * @param packageName
+     *            The package name for classes found inside the base directory
+     * @return The classes
+     * @throws ClassNotFoundException
+     *             if problem
+     */
+    public static List<Class<?>> findClasses(final File directory, final String packageName)
+            throws ClassNotFoundException {
+        final List<Class<?>> classes = new ArrayList<>();
+        if (!directory.exists()) {
+            return classes;
+        }
+        final File[] files = directory.listFiles();
+        for (final File file : files) {
+            if (file.isDirectory()) {
+                assert !file.getName().contains(".");
+                classes.addAll(findClasses(file, packageName + "." + file.getName()));
+            } else if (file.getName().endsWith(".class")) {
+                classes.add(
+                        Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6)));
+            }
+        }
+        return classes;
     }
 
 }
