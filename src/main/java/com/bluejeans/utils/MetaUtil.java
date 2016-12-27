@@ -1179,22 +1179,73 @@ public class MetaUtil {
     }
 
     /**
-     * @param instr
-     *            the instrumentation
-     * @param fqcn
-     *            the class name
-     * @param methodName
-     *            the method name
-     * @param argLength
-     *            the arg length
-     * @param logic
-     *            the logic
-     * @throws Exception
-     *             if problem
+     * Logic transformer
+     *
+     * @author Dinesh Ilindra
      */
-    public static void appendLogic(final Instrumentation instr, final String fqcn, final String methodName,
-            final int argLength, final String logic) throws Exception {
-        addLogic(instr, fqcn, methodName, argLength, "append", logic);
+    public static class LogicTransformer implements ClassFileTransformer {
+
+        private final String fqcn, methodName;
+        private final int argLength;
+        private final String mode, logic;
+
+        /**
+         * @param fqcn
+         *            the class name
+         * @param methodName
+         *            the method name
+         * @param argLength
+         *            the arg length
+         * @param mode
+         *            the mode
+         * @param logic
+         *            the logic
+         */
+        public LogicTransformer(final String fqcn, final String methodName, final int argLength, final String mode,
+                final String logic) {
+            super();
+            this.fqcn = fqcn;
+            this.methodName = methodName;
+            this.argLength = argLength;
+            this.mode = mode;
+            this.logic = logic;
+        }
+
+        /*
+         * (non-Javadoc)
+         *
+         * @see java.lang.instrument.ClassFileTransformer#transform(java.lang.ClassLoader,
+         * java.lang.String, java.lang.Class, java.security.ProtectionDomain, byte[])
+         */
+        @Override
+        public byte[] transform(final ClassLoader loader, final String className, final Class<?> classBeingRedefined,
+                final ProtectionDomain protectionDomain, final byte[] classfileBuffer)
+                throws IllegalClassFormatException {
+            byte[] byteCode = classfileBuffer;
+            if (className.equals(fqcn.replace('.', '/'))) {
+                try {
+                    final ClassPool classPool = ClassPool.getDefault();
+                    final CtClass ctClass = classPool.makeClass(new ByteArrayInputStream(classfileBuffer));
+                    final CtMethod[] methods = ctClass.getDeclaredMethods();
+                    for (final CtMethod method : methods) {
+                        if (method.getName().equals(methodName) && method.getParameterTypes().length == argLength) {
+                            if ("prepend".equalsIgnoreCase(mode)) {
+                                method.insertBefore(logic);
+                            } else if ("append".equalsIgnoreCase(mode)) {
+                                method.insertAfter(logic);
+                            } else {
+                                method.insertAt(Integer.parseInt(mode), logic);
+                            }
+                        }
+                    }
+                    byteCode = ctClass.toBytecode();
+                    ctClass.detach();
+                } catch (final Exception ex) {
+                    // do nothing
+                }
+            }
+            return byteCode;
+        }
     }
 
     /**
@@ -1203,71 +1254,39 @@ public class MetaUtil {
      * @param fqcn
      *            the class name
      * @param methodName
-     *            the method name
+     *            the method names
      * @param argLength
-     *            the arg length
-     * @param logic
-     *            the logic
-     * @throws Exception
-     *             if problem
-     */
-    public static void prependLogic(final Instrumentation instr, final String fqcn, final String methodName,
-            final int argLength, final String logic) throws Exception {
-        addLogic(instr, fqcn, methodName, argLength, "prepend", logic);
-    }
-
-    /**
-     * @param instr
-     *            the instrumentation
-     * @param fqcn
-     *            the class name
-     * @param methodName
-     *            the method name
-     * @param argLength
-     *            the arg length
+     *            the arg lengths
      * @param mode
-     *            the mode
+     *            the modes
      * @param logic
-     *            the logic
+     *            the logics
      * @throws Exception
      *             if problem
      */
     public static void addLogic(final Instrumentation instr, final String fqcn, final String methodName,
-            final int argLength, final String mode, final String logic) throws Exception {
-        final ClassFileTransformer transformer = new ClassFileTransformer() {
-            @Override
-            public byte[] transform(final ClassLoader loader, final String className,
-                    final Class<?> classBeingRedefined, final ProtectionDomain protectionDomain,
-                    final byte[] classfileBuffer) throws IllegalClassFormatException {
-                byte[] byteCode = classfileBuffer;
-                if (className.equals(fqcn.replace('.', '/'))) {
-                    try {
-                        final ClassPool classPool = ClassPool.getDefault();
-                        final CtClass ctClass = classPool.makeClass(new ByteArrayInputStream(classfileBuffer));
-                        final CtMethod[] methods = ctClass.getDeclaredMethods();
-                        for (final CtMethod method : methods) {
-                            if (method.getName().equals(methodName) && method.getParameterTypes().length == argLength) {
-                                if ("prepend".equalsIgnoreCase(mode)) {
-                                    method.insertBefore(logic);
-                                } else if ("append".equalsIgnoreCase(mode)) {
-                                    method.insertAfter(logic);
-                                } else {
-                                    method.insertAt(Integer.parseInt(mode), logic);
-                                }
-                            }
-                        }
-                        byteCode = ctClass.toBytecode();
-                        ctClass.detach();
-                    } catch (final Exception ex) {
-                        // do nothing
-                    }
-                }
-                return byteCode;
-            }
-        };
-        instr.addTransformer(transformer, true);
+            final String argLength, final String mode, final String logic) throws Exception {
+        boolean methodMulti = false;
+        if (methodName.contains(",")) {
+            methodMulti = true;
+        }
+        final String[] methodInfo = methodName.split(",");
+        final String[] argLengthInfo = argLength.split(",");
+        final String[] modeInfo = mode.split(",");
+        final String[] logicInfo = logic.split(",,");
+        final List<ClassFileTransformer> transformers = new ArrayList<>();
+        for (int index = 0; index < logicInfo.length; index++) {
+            final ClassFileTransformer transformer = new LogicTransformer(fqcn,
+                    methodMulti ? methodInfo[index] : methodName,
+                    Integer.parseInt(methodMulti ? argLengthInfo[index] : argLength), modeInfo[index],
+                    logicInfo[index]);
+            instr.addTransformer(transformer, true);
+            transformers.add(transformer);
+        }
         instr.retransformClasses(Class.forName(fqcn));
-        instr.removeTransformer(transformer);
+        for (final ClassFileTransformer transformer : transformers) {
+            instr.removeTransformer(transformer);
+        }
     }
 
     /**
