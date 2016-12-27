@@ -67,6 +67,11 @@ import javassist.CtMethod;
 public class MetaUtil {
 
     /**
+     * Generic meta data map
+     */
+    public static final Map<String, Object> META_MAP = new HashMap<>();
+
+    /**
      * Create a params map from given varargs.
      *
      * @param params

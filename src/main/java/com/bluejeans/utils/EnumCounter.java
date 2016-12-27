@@ -3,8 +3,11 @@
  */
 package com.bluejeans.utils;
 
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.apache.log4j.helpers.ISO8601DateFormat;
 
 /**
  * Maintains all the counts related to given enum.
@@ -23,8 +26,7 @@ public class EnumCounter<E extends Enum<E>> {
         private static final long serialVersionUID = -6906468090357760718L;
 
         /**
-         * The <tt>Class</tt> object for the enum type of all the keys of this
-         * map.
+         * The <tt>Class</tt> object for the enum type of all the keys of this map.
          *
          * @serial
          */
@@ -130,6 +132,8 @@ public class EnumCounter<E extends Enum<E>> {
 
     private final EventCountMap eventCounts, secEventCounts;
 
+    private long _lut = System.currentTimeMillis();
+
     /**
      * initializes all the counts.
      *
@@ -217,6 +221,14 @@ public class EnumCounter<E extends Enum<E>> {
     public void incrementEventCount(final E event, final int count) {
         eventCounts.get(event).addAndGet(count);
         secEventCounts.get(event).addAndGet(count);
+        _lut = System.currentTimeMillis();
+    }
+
+    /**
+     * @return the last updated
+     */
+    public String getLastUpdated() {
+        return ISO8601DateFormat.getDateTimeInstance().format(new Date(_lut));
     }
 
 }
