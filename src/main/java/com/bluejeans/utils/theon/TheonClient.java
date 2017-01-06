@@ -20,6 +20,7 @@ import javax.annotation.PreDestroy;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.GzipCompressingEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -221,6 +222,8 @@ public class TheonClient<E extends Serializable> {
 
     private CloseableHttpClient httpClient;
 
+    private RequestConfig requestConfig;
+
     private boolean initialized = false;
 
     private EnumCounter<TheonStatus> theonCounter;
@@ -287,6 +290,10 @@ public class TheonClient<E extends Serializable> {
                 .setDefaultSocketConfig(SocketConfig.custom().setSoTimeout(60000).setSoKeepAlive(true).build())
                 .setDefaultCredentialsProvider(credentialProvider);
         httpClient = builder.build();
+        final RequestConfig.Builder config = RequestConfig.copy(RequestConfig.DEFAULT);
+        config.setConnectionRequestTimeout(60000);
+        config.setSocketTimeout(60000);
+        requestConfig = config.build();
         bulkOperationUtil = BulkOperationUtil.create(bulkPollIntervalSecs, queueCapacity, queueDir, queueName,
                 bigQueueTimerInterval, bulkOperation, bulkMessageSize, 1, 1);
         parallelBulkOperationUtil = BulkOperationUtil.create(bulkPollIntervalSecs, queueCapacity, queueDir, queueName,
@@ -365,6 +372,7 @@ public class TheonClient<E extends Serializable> {
                         url += "/" + defaultKey;
                     }
                     final HttpPost post = new HttpPost(url);
+                    post.setConfig(requestConfig);
                     CloseableHttpResponse response = null;
                     try {
                         if (gzipEnabled) {
@@ -444,6 +452,7 @@ public class TheonClient<E extends Serializable> {
                     url += "/" + key;
                 }
                 final HttpPost post = new HttpPost(url);
+                post.setConfig(requestConfig);
                 CloseableHttpResponse response = null;
                 try {
                     post.setEntity(new StringEntity(builder.toString()));
@@ -488,6 +497,7 @@ public class TheonClient<E extends Serializable> {
             return;
         }
         final HttpPost post = new HttpPost(theonUri + "/" + topic + "/" + key);
+        post.setConfig(requestConfig);
         CloseableHttpResponse response = null;
         try {
             post.setEntity(new StringEntity(':' + message.toString()));
