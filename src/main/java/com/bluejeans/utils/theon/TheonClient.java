@@ -7,6 +7,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -16,6 +21,7 @@ import java.util.Map;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import javax.net.ssl.SSLContext;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.auth.AuthScope;
@@ -24,13 +30,22 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.GzipCompressingEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.config.Registry;
+import org.apache.http.config.RegistryBuilder;
 import org.apache.http.config.SocketConfig;
+import org.apache.http.conn.socket.ConnectionSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.DefaultHttpRequestRetryHandler;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.ssl.SSLContextBuilder;
+import org.apache.http.ssl.SSLContexts;
+import org.apache.http.ssl.TrustStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -238,6 +253,8 @@ public class TheonClient<E extends Serializable> {
 
     private boolean gzipEnabled = false;
 
+    private boolean certValidationDisabled = false;
+
     /**
      * The default one
      */
@@ -279,7 +296,29 @@ public class TheonClient<E extends Serializable> {
         theonUri = new URI(usedUrl);
         final String host = theonUri.getHost();
         final int port = theonUri.getPort();
-        final PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
+        PoolingHttpClientConnectionManager cm;
+        final SSLContextBuilder sslBuilder = SSLContexts.custom();
+        if (certValidationDisabled) {
+            try {
+                sslBuilder.loadTrustMaterial(null, new TrustStrategy() {
+                    @Override
+                    public boolean isTrusted(final X509Certificate[] chain, final String authType) throws CertificateException {
+                        return true;
+                    }});
+                final SSLContext sslContext = sslBuilder.build();
+                final SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslContext,
+                        NoopHostnameVerifier.INSTANCE);
+                final Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder
+                        .<ConnectionSocketFactory> create().register("https", sslsf)
+                        .register("http", new PlainConnectionSocketFactory()).build();
+                cm = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
+            } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException ex) {
+                logger.warn("Problem in disabling SSL certificate checks", ex);
+                cm = new PoolingHttpClientConnectionManager();
+            }
+        } else {
+            cm = new PoolingHttpClientConnectionManager();
+        }
         cm.setMaxTotal(httpConnPoolSize);
         cm.setDefaultMaxPerRoute(httpConnPoolSize);
         final BasicCredentialsProvider credentialProvider = new BasicCredentialsProvider();
@@ -857,6 +896,20 @@ public class TheonClient<E extends Serializable> {
      */
     public void setPeekEnabled(final boolean peekEnabled) {
         this.peekEnabled = peekEnabled;
+    }
+
+    /**
+     * @return the certValidationDisabled
+     */
+    public boolean isCertValidationDisabled() {
+        return certValidationDisabled;
+    }
+
+    /**
+     * @param certValidationDisabled the certValidationDisabled to set
+     */
+    public void setCertValidationDisabled(final boolean certValidationDisabled) {
+        this.certValidationDisabled = certValidationDisabled;
     }
 
 }
