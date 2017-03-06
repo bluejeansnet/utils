@@ -52,8 +52,14 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.ClassUtils;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
+import org.owasp.encoder.esapi.ESAPIEncoder;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
+import com.google.common.collect.Lists;
 
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -70,6 +76,13 @@ public class MetaUtil {
      * Generic meta data map
      */
     public static final Map<String, Object> META_MAP = new HashMap<>();
+
+    /**
+     * The simple return type list
+     */
+    public static final List<Class<?>> SIMPLE_RETURN_TYPE_LIST = new ArrayList<Class<?>>(
+            Arrays.asList(Boolean.TYPE, Boolean.class, Integer.class, Integer.TYPE, Long.class, Long.TYPE, Short.class,
+                    Short.TYPE, Double.TYPE, Double.class, Float.class, Float.TYPE, String.class));
 
     /**
      * Create a params map from given varargs.
@@ -184,13 +197,6 @@ public class MetaUtil {
         final ObjectName name = new ObjectName(objectName);
         mbs.registerMBean(bean, name);
     }
-
-    /**
-     * The simple return type list
-     */
-    public static final List<Class<?>> SIMPLE_RETURN_TYPE_LIST = new ArrayList<Class<?>>(
-            Arrays.asList(Boolean.TYPE, Boolean.class, Integer.class, Integer.TYPE, Long.class, Long.TYPE, Short.class,
-                    Short.TYPE, Double.TYPE, Double.class, Float.class, Float.TYPE, String.class));
 
     /**
      * Finds the first method starting by this name or null if not found.
@@ -1347,6 +1353,41 @@ public class MetaUtil {
             }
         }
         return classes;
+    }
+
+    /**
+     * Encode given text
+     *
+     * @param text
+     *            to encode
+     * @return encoded
+     */
+    public static String encodeForHTML(final String text) {
+        return ESAPIEncoder.getInstance().encodeForHTML(text);
+    }
+
+    /**
+     * Encode the json node text values for HTML
+     *
+     * @param node
+     *            the node to be encoded
+     * @return the encoded node
+     */
+    public static JsonNode encodeForHTML(final JsonNode node) {
+        if (node.isArray()) {
+            final ArrayNode arr = (ArrayNode) node;
+            for (int i = 0; i < arr.size(); i++) {
+                arr.set(i, encodeForHTML(arr.get(i)));
+            }
+        } else if (node.isObject()) {
+            final ObjectNode obj = (ObjectNode) node;
+            for (final String key : Lists.newArrayList(obj.fieldNames())) {
+                obj.set(key, encodeForHTML(obj.get(key)));
+            }
+        } else if (node.isTextual()) {
+            return new TextNode(encodeForHTML(node.asText()));
+        }
+        return node;
     }
 
 }

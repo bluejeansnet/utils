@@ -10,6 +10,7 @@ import org.junit.Test;
 import com.bluejeans.utils.javaagent.AgentTest;
 import com.bluejeans.utils.javaagent.DurationTransformer;
 import com.bluejeans.utils.javaagent.InstrumentationAgent;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * @author Dinesh Ilindra
@@ -30,13 +31,20 @@ public class MetaUtilTest {
                 InstrumentationAgent.class);
     }
 
+    @Test
+    public void testEsapi() throws Exception {
+        System.out.println(MetaUtil.encodeForHTML(new ObjectMapper().readTree("{\"k1\":\"v1 <hi>.....\"}")));
+    }
+
     /**
      * @param args
      * @throws Exception
      */
     public static void main(final String[] args) throws Exception {
         final MetaUtilTest test = new MetaUtilTest();
-        test.testClassBytes();
+        // test.testClassBytes();
+        test.testEsapi();
+        test.testEsapi();
     }
 
 }
