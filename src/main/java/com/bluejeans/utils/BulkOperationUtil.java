@@ -100,6 +100,10 @@ public class BulkOperationUtil<E> {
 
     private int bulkRetryCount = Integer.MAX_VALUE - 1;
 
+    private Class<E> entityType;
+
+    private E dummyElement;
+
     private BulkOperationUtil(final int bulkPollIntervalSecs, final int capacity, final String queueDir,
             final String queueName, final long bigQueueTimerInterval, final BulkOperation<E> bulkOperation,
             final int batchSize, final int bulkExecutorSize, final int bulkExecutorQueueCapacity) {
@@ -155,16 +159,52 @@ public class BulkOperationUtil<E> {
      *            the bulkExecutorQueueCapacity
      * @param <E>
      *            the entity type
+     * @param start
+     *            start on create?
+     * @return the created utility
+     */
+    public static <E> BulkOperationUtil<E> create(final int bulkPollInterval, final int capacity, final String queueDir,
+            final String queueName, final long bigQueueTimerInterval, final BulkOperation<E> bulkOperation,
+            final int batchSize, final int bulkExecutorSize, final int bulkExecutorQueueCapacity, final boolean start) {
+        final BulkOperationUtil<E> bulkOperationUtil = new BulkOperationUtil<E>(bulkPollInterval, capacity, queueDir,
+                queueName, bigQueueTimerInterval, bulkOperation, batchSize, bulkExecutorSize,
+                bulkExecutorQueueCapacity);
+        if (start) {
+            bulkOperationUtil.doer.start();
+        }
+        return bulkOperationUtil;
+    }
+
+    /**
+     * Create based on parameters
+     *
+     * @param bulkPollInterval
+     *            the poll interval
+     * @param capacity
+     *            the queue capacity
+     * @param queueDir
+     *            the queue directory
+     * @param queueName
+     *            the queue name
+     * @param bigQueueTimerInterval
+     *            the bigQueueTimerInterval
+     * @param bulkOperation
+     *            the bulk operation itself
+     * @param batchSize
+     *            the drain batch size
+     * @param bulkExecutorSize
+     *            the bulk executor size
+     * @param bulkExecutorQueueCapacity
+     *            the bulkExecutorQueueCapacity
+     * @param <E>
+     *            the entity type
      * @return the created utility
      */
     public static <E> BulkOperationUtil<E> create(final int bulkPollInterval, final int capacity, final String queueDir,
             final String queueName, final long bigQueueTimerInterval, final BulkOperation<E> bulkOperation,
             final int batchSize, final int bulkExecutorSize, final int bulkExecutorQueueCapacity) {
-        final BulkOperationUtil<E> bulkOperationUtil = new BulkOperationUtil<E>(bulkPollInterval, capacity, queueDir,
-                queueName, bigQueueTimerInterval, bulkOperation, batchSize, bulkExecutorSize,
-                bulkExecutorQueueCapacity);
-        bulkOperationUtil.doer.start();
-        return bulkOperationUtil;
+        return create(bulkPollInterval, capacity, queueDir, queueName, bigQueueTimerInterval, bulkOperation, batchSize,
+                bulkExecutorSize, bulkExecutorQueueCapacity, true);
     }
 
     /**
@@ -402,6 +442,13 @@ public class BulkOperationUtil<E> {
                 logger.error("Failed to insert into queue", e);
             }
         }
+    }
+
+    /**
+     * start
+     */
+    public void start() {
+        doer.start();
     }
 
     /**
@@ -650,6 +697,46 @@ public class BulkOperationUtil<E> {
      */
     public EnumCounter<BulkStatus> getBulkStatusCounter() {
         return bulkStatusCounter;
+    }
+
+    /**
+     * @return the entityType
+     */
+    public Class<?> getEntityType() {
+        return entityType;
+    }
+
+    /**
+     * @param entityType
+     *            the entityType to set
+     */
+    public void setEntityType(final Class<E> entityType) {
+        this.entityType = entityType;
+    }
+
+    public void entityTypeIs(final Class<E> entityType) {
+        this.entityType = entityType;
+        bigQueue.setEntityType(entityType);
+    }
+
+    /**
+     * @return the dummyElement
+     */
+    public E getDummyElement() {
+        return dummyElement;
+    }
+
+    /**
+     * @param dummyElement
+     *            the dummyElement to set
+     */
+    public void setDummyElement(final E dummyElement) {
+        this.dummyElement = dummyElement;
+    }
+
+    public void dummyElementIs(final E el) {
+        dummyElement = el;
+        bigQueue.setDummyElement(el);
     }
 
 }

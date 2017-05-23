@@ -20,6 +20,8 @@ public class BigQueue<E> extends com.bluejeans.bigqueue.BigQueue {
 
     private Class<E> entityType;
 
+    private E dummyElement;
+
     public BigQueue(final String queueDir, final String queueName, final int pageSize) {
         super(queueDir, queueName, pageSize);
     }
@@ -72,7 +74,11 @@ public class BigQueue<E> extends com.bluejeans.bigqueue.BigQueue {
                             try {
                                 entityType = (Class<E>) String.class;
                             } catch (final Exception ex1) {
-                                entityType = (Class<E>) byte[].class;
+                                try {
+                                    entityType = (Class<E>) byte[].class;
+                                } catch (final Exception ex2) {
+                                    // cannot find the entity type
+                                }
                             }
                         }
                     }
@@ -86,7 +92,7 @@ public class BigQueue<E> extends com.bluejeans.bigqueue.BigQueue {
                 try {
                     return (E) SerializationUtils.deserialize(data);
                 } catch (final Exception ex) {
-                    return null;
+                    return dummyElement;
                 }
             }
         } else {
@@ -103,7 +109,10 @@ public class BigQueue<E> extends com.bluejeans.bigqueue.BigQueue {
         }
         final List<byte[]> elements = dequeueMulti(maxElements);
         for (final byte[] data : elements) {
-            c.add(element(data));
+            final E el = element(data);
+            if (el != null) {
+                c.add(el);
+            }
         }
         return elements.size();
     }
@@ -117,9 +126,42 @@ public class BigQueue<E> extends com.bluejeans.bigqueue.BigQueue {
         }
         final List<byte[]> elements = peekMulti(maxElements);
         for (final byte[] data : elements) {
-            c.add(element(data));
+            final E el = element(data);
+            if (el != null) {
+                c.add(el);
+            }
         }
         return elements.size();
+    }
+
+    /**
+     * @return the entityType
+     */
+    public Class<E> getEntityType() {
+        return entityType;
+    }
+
+    /**
+     * @param entityType
+     *            the entityType to set
+     */
+    public void setEntityType(final Class<E> entityType) {
+        this.entityType = entityType;
+    }
+
+    /**
+     * @return the dummyElement
+     */
+    public E getDummyElement() {
+        return dummyElement;
+    }
+
+    /**
+     * @param dummyElement
+     *            the dummyElement to set
+     */
+    public void setDummyElement(final E dummyElement) {
+        this.dummyElement = dummyElement;
     }
 
 }

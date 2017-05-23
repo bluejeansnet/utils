@@ -186,13 +186,15 @@ public class TheonClient<E extends Serializable> {
             final Map<String, Map<String, List<E>>> messageMap = new HashMap<String, Map<String, List<E>>>();
             boolean status = true;
             for (final TheonMessage<E> tm : coll) {
-                if (!messageMap.containsKey(tm.topic)) {
-                    messageMap.put(tm.topic, new HashMap<String, List<E>>());
+                if(tm.topic!=null) {
+                    if (!messageMap.containsKey(tm.topic)) {
+                        messageMap.put(tm.topic, new HashMap<String, List<E>>());
+                    }
+                    if (!messageMap.get(tm.topic).containsKey(tm.key)) {
+                        messageMap.get(tm.topic).put(tm.key, new ArrayList<E>());
+                    }
+                    messageMap.get(tm.topic).get(tm.key).add(tm.message);
                 }
-                if (!messageMap.get(tm.topic).containsKey(tm.key)) {
-                    messageMap.get(tm.topic).put(tm.key, new ArrayList<E>());
-                }
-                messageMap.get(tm.topic).get(tm.key).add(tm.message);
             }
             if (postPerKey) {
                 for (final String topic : messageMap.keySet()) {
@@ -254,6 +256,8 @@ public class TheonClient<E extends Serializable> {
     private boolean gzipEnabled = false;
 
     private boolean certValidationDisabled = false;
+
+    private boolean stringType = false;
 
     /**
      * The default one
@@ -334,9 +338,9 @@ public class TheonClient<E extends Serializable> {
         config.setSocketTimeout(60000);
         requestConfig = config.build();
         bulkOperationUtil = BulkOperationUtil.create(bulkPollIntervalSecs, queueCapacity, queueDir, queueName,
-                bigQueueTimerInterval, bulkOperation, bulkMessageSize, 1, 1);
+                bigQueueTimerInterval, bulkOperation, bulkMessageSize, 1, 1, false);
         parallelBulkOperationUtil = BulkOperationUtil.create(bulkPollIntervalSecs, queueCapacity, queueDir, queueName,
-                bigQueueTimerInterval, bulkOperation, bulkMessageSize, httpConnPoolSize, httpConnPoolSize);
+                bigQueueTimerInterval, bulkOperation, bulkMessageSize, httpConnPoolSize, httpConnPoolSize, false);
         bulkOperationUtil.setFileBased(fileBasedQueue);
         parallelBulkOperationUtil.setFileBased(fileBasedQueue);
         bulkOperationUtil.setPeekEnabled(peekEnabled);
@@ -345,6 +349,16 @@ public class TheonClient<E extends Serializable> {
         parallelBulkOperationUtil.setWaitEnabled(waitEnabled);
         parallelBulkOperationUtil.setParallel(true);
         theonCounter = new EnumCounter<TheonStatus>(TheonStatus.class);
+        final TheonMessage<E> tm = new TheonMessage<E>(null, null);
+        bulkOperationUtil.dummyElementIs(tm);
+        parallelBulkOperationUtil.dummyElementIs(tm);
+        if(stringType) {
+            final TheonMessage<String> stm = new TheonMessage<String>("", "");
+            bulkOperationUtil.entityTypeIs((Class<TheonMessage<E>>) stm.getClass());
+            parallelBulkOperationUtil.entityTypeIs((Class<TheonMessage<E>>) stm.getClass());
+        }
+        bulkOperationUtil.start();
+        parallelBulkOperationUtil.start();
         initialized = true;
     }
 
@@ -910,6 +924,20 @@ public class TheonClient<E extends Serializable> {
      */
     public void setCertValidationDisabled(final boolean certValidationDisabled) {
         this.certValidationDisabled = certValidationDisabled;
+    }
+
+    /**
+     * @return the stringType
+     */
+    public boolean isStringType() {
+        return stringType;
+    }
+
+    /**
+     * @param stringType the stringType to set
+     */
+    public void setStringType(final boolean stringType) {
+        this.stringType = stringType;
     }
 
 }
