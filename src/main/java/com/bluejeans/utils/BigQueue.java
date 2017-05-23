@@ -66,7 +66,15 @@ public class BigQueue<E> extends com.bluejeans.bigqueue.BigQueue {
             if (entityType == null) {
                 synchronized (this) {
                     if (entityType == null) {
-                        entityType = (Class<E>) SerializationUtils.deserialize(data).getClass();
+                        try {
+                            entityType = (Class<E>) SerializationUtils.deserialize(data).getClass();
+                        } catch (final Exception ex) {
+                            try {
+                                entityType = (Class<E>) String.class;
+                            } catch (final Exception ex1) {
+                                entityType = (Class<E>) byte[].class;
+                            }
+                        }
                     }
                 }
             }
@@ -75,7 +83,11 @@ public class BigQueue<E> extends com.bluejeans.bigqueue.BigQueue {
             } else if (entityType.equals(String.class)) {
                 return (E) new String(data);
             } else {
-                return (E) SerializationUtils.deserialize(data);
+                try {
+                    return (E) SerializationUtils.deserialize(data);
+                } catch (final Exception ex) {
+                    return null;
+                }
             }
         } else {
             return null;

@@ -150,6 +150,18 @@ public class URIInvoker extends Invoker {
     }
 
     /**
+     * Add one target
+     *
+     * @param targetName
+     *            the name
+     * @param targetObject
+     *            the object
+     */
+    public void addTarget(final String targetName, final Object targetObject) {
+        addTargets(MetaUtil.createMap(targetName, targetObject));
+    }
+
+    /**
      * @return the targetMap
      */
     public Map<String, Object> getTargetMap() {
