@@ -736,7 +736,9 @@ public class BulkOperationUtil<E> {
 
     public void dummyElementIs(final E el) {
         dummyElement = el;
-        bigQueue.setDummyElement(el);
+        if (bigQueue != null) {
+            bigQueue.setDummyElement(el);
+        }
     }
 
 }
