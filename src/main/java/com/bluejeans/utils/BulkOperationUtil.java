@@ -716,7 +716,9 @@ public class BulkOperationUtil<E> {
 
     public void entityTypeIs(final Class<E> entityType) {
         this.entityType = entityType;
-        bigQueue.setEntityType(entityType);
+        if (bigQueue != null) {
+            bigQueue.setEntityType(entityType);
+        }
     }
 
     /**
