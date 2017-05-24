@@ -356,6 +356,9 @@ public class TheonClient<E extends Serializable> {
             final TheonMessage<String> stm = new TheonMessage<String>("", "");
             bulkOperationUtil.entityTypeIs((Class<TheonMessage<E>>) stm.getClass());
             parallelBulkOperationUtil.entityTypeIs((Class<TheonMessage<E>>) stm.getClass());
+        } else {
+            bulkOperationUtil.entityTypeIs((Class<TheonMessage<E>>) tm.getClass());
+            parallelBulkOperationUtil.entityTypeIs((Class<TheonMessage<E>>) tm.getClass());
         }
         bulkOperationUtil.start();
         parallelBulkOperationUtil.start();
