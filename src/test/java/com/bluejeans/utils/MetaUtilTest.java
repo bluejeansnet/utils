@@ -36,6 +36,11 @@ public class MetaUtilTest {
         System.out.println(MetaUtil.encodeForHTML(new ObjectMapper().readTree("{\"k1\":\"v1 <hi>.....\"}")));
     }
 
+    @Test
+    public void testDecompile() {
+        System.out.println(MetaUtil.decompileClass("java.lang.Appendable"));
+    }
+
     /**
      * @param args
      * @throws Exception
@@ -43,8 +48,10 @@ public class MetaUtilTest {
     public static void main(final String[] args) throws Exception {
         final MetaUtilTest test = new MetaUtilTest();
         // test.testClassBytes();
-        test.testEsapi();
-        test.testEsapi();
+        // test.testEsapi();
+        // test.testEsapi();
+        // test.testFtp();
+        test.testDecompile();
     }
 
 }

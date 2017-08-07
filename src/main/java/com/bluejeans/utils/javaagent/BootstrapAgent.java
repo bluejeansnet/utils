@@ -21,6 +21,15 @@ import java.util.jar.Manifest;
  */
 public class BootstrapAgent {
 
+    private static Instrumentation instrumentation;
+
+    /**
+     * @return the instrumentation
+     */
+    public static Instrumentation getInstrumentation() {
+        return instrumentation;
+    }
+
     /**
      * Read manifest property values
      *
@@ -58,6 +67,7 @@ public class BootstrapAgent {
     }
 
     public static void agentmain(final String agentArgs, final Instrumentation inst) {
+        instrumentation = inst;
         final Map<String, String> argProps = new HashMap<>();
         for (final String prop : agentArgs.split(",")) {
             final String[] info = prop.split("=");

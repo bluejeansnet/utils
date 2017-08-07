@@ -60,6 +60,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.Lists;
+import com.strobel.decompiler.Decompiler;
+import com.strobel.decompiler.DecompilerSettings;
+import com.strobel.decompiler.PlainTextOutput;
 
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -1353,6 +1356,16 @@ public class MetaUtil {
             }
         }
         return classes;
+    }
+
+    /**
+     * Decompile class
+     */
+    public static String decompileClass(final String className) {
+        final DecompilerSettings settings = DecompilerSettings.javaDefaults();
+        final PlainTextOutput output = new PlainTextOutput();
+        Decompiler.decompile(className, output, settings);
+        return output.toString();
     }
 
     /**
