@@ -7,14 +7,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +22,7 @@ import javax.annotation.PreDestroy;
 import javax.net.ssl.SSLContext;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.Consts;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.config.RequestConfig;
@@ -45,7 +44,6 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
-import org.apache.http.ssl.TrustStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -174,42 +172,39 @@ public class TheonClient<E extends Serializable> {
 
     private String password;
 
-    private final BulkOperation<TheonMessage<E>> bulkOperation = new BulkOperation<TheonMessage<E>>() {
-        /*
-         * (non-Javadoc)
-         *
-         * @see com.bluejeans.common.utils.BulkOperationUtil. BulkOperation
-         * #doBulk (java.util.Collection)
-         */
-        @Override
-        public void doBulk(final Collection<TheonMessage<E>> coll) {
-            final Map<String, Map<String, List<E>>> messageMap = new HashMap<String, Map<String, List<E>>>();
-            boolean status = true;
-            for (final TheonMessage<E> tm : coll) {
-                if(tm.topic!=null) {
-                    if (!messageMap.containsKey(tm.topic)) {
-                        messageMap.put(tm.topic, new HashMap<String, List<E>>());
-                    }
-                    if (!messageMap.get(tm.topic).containsKey(tm.key)) {
-                        messageMap.get(tm.topic).put(tm.key, new ArrayList<E>());
-                    }
-                    messageMap.get(tm.topic).get(tm.key).add(tm.message);
+    private Charset charset;
+
+    private boolean postPerKey = false;
+
+    private String defaultKey = "";
+
+    private final BulkOperation<TheonMessage<E>> bulkOperation = coll -> {
+        final Map<String, Map<String, List<E>>> messageMap = new HashMap<String, Map<String, List<E>>>();
+        boolean status = true;
+        for (final TheonMessage<E> tm : coll) {
+            if (tm.topic != null) {
+                if (!messageMap.containsKey(tm.topic)) {
+                    messageMap.put(tm.topic, new HashMap<String, List<E>>());
+                }
+                if (!messageMap.get(tm.topic).containsKey(tm.key)) {
+                    messageMap.get(tm.topic).put(tm.key, new ArrayList<E>());
+                }
+                messageMap.get(tm.topic).get(tm.key).add(tm.message);
+            }
+        }
+        if (postPerKey) {
+            for (final String topic1 : messageMap.keySet()) {
+                for (final String key : messageMap.get(topic1).keySet()) {
+                    status &= postMessagesNow(topic1, key, messageMap.get(topic1).get(key));
                 }
             }
-            if (postPerKey) {
-                for (final String topic : messageMap.keySet()) {
-                    for (final String key : messageMap.get(topic).keySet()) {
-                        status &= postMessagesNow(topic, key, messageMap.get(topic).get(key));
-                    }
-                }
-            } else {
-                for (final String topic : messageMap.keySet()) {
-                    status = postMessagesNow(topic, defaultKey, messageMap.get(topic));
-                }
+        } else {
+            for (final String topic2 : messageMap.keySet()) {
+                status = postMessagesNow(topic2, defaultKey, messageMap.get(topic2));
             }
-            if (!status) {
-                throw new RuntimeException("Error in posting messages");
-            }
+        }
+        if (!status) {
+            throw new RuntimeException("Error in posting messages");
         }
     };
 
@@ -249,10 +244,6 @@ public class TheonClient<E extends Serializable> {
 
     private int httpConnPoolSize = 10;
 
-    private boolean postPerKey = false;
-
-    private String defaultKey = "";
-
     private boolean gzipEnabled = false;
 
     private boolean certValidationDisabled = false;
@@ -290,6 +281,9 @@ public class TheonClient<E extends Serializable> {
      */
     @PostConstruct
     public void init() throws URISyntaxException {
+        if (charset == null) {
+            charset = Consts.UTF_8;
+        }
         if (StringUtils.isEmpty(theonUrl) || StringUtils.isEmpty(username) || StringUtils.isEmpty(password)) {
             return;
         }
@@ -304,11 +298,7 @@ public class TheonClient<E extends Serializable> {
         final SSLContextBuilder sslBuilder = SSLContexts.custom();
         if (certValidationDisabled) {
             try {
-                sslBuilder.loadTrustMaterial(null, new TrustStrategy() {
-                    @Override
-                    public boolean isTrusted(final X509Certificate[] chain, final String authType) throws CertificateException {
-                        return true;
-                    }});
+                sslBuilder.loadTrustMaterial(null, (chain, authType) -> true);
                 final SSLContext sslContext = sslBuilder.build();
                 final SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslContext,
                         NoopHostnameVerifier.INSTANCE);
@@ -352,7 +342,7 @@ public class TheonClient<E extends Serializable> {
         final TheonMessage<E> tm = new TheonMessage<E>(null, null);
         bulkOperationUtil.dummyElementIs(tm);
         parallelBulkOperationUtil.dummyElementIs(tm);
-        if(stringType) {
+        if (stringType) {
             final TheonMessage<String> stm = new TheonMessage<String>("", "");
             bulkOperationUtil.entityTypeIs((Class<TheonMessage<E>>) stm.getClass());
             parallelBulkOperationUtil.entityTypeIs((Class<TheonMessage<E>>) stm.getClass());
@@ -392,7 +382,8 @@ public class TheonClient<E extends Serializable> {
      * @param messagesMap
      *            the key messages map
      */
-    public boolean postMessagesNow(final String topic, final String defaultKey, final Map<String, List<E>> messagesMap) {
+    public boolean postMessagesNow(final String topic, final String defaultKey,
+            final Map<String, List<E>> messagesMap) {
         if (!initialized) {
             return false;
         }
@@ -407,10 +398,10 @@ public class TheonClient<E extends Serializable> {
         for (final String key : messagesMap.keySet()) {
             final List<E> messages = messagesMap.get(key);
             String postKey = defaultKey;
-            if(key == null) {
+            if (key == null) {
                 logger.warn("Key is 'null' for below messages - \n\t" + messages);
             } else {
-                postKey = key.indexOf(':') == -1?key:key.replaceAll(":", "_");
+                postKey = key.indexOf(':') == -1 ? key : key.replaceAll(":", "_");
             }
             for (final E message : messages) {
                 builder.append(postKey);
@@ -434,7 +425,7 @@ public class TheonClient<E extends Serializable> {
                         if (gzipEnabled) {
                             post.setEntity(new GzipCompressingEntity(new StringEntity(builder.toString())));
                         } else {
-                            post.setEntity(new StringEntity(builder.toString()));
+                            post.setEntity(new StringEntity(builder.toString(), charset));
                         }
                         response = httpClient.execute(post);
                         theonCounter.incrementEventCount(TheonStatus.HTTP_POST_SUCCESS);
@@ -442,9 +433,8 @@ public class TheonClient<E extends Serializable> {
                     } catch (final Exception ex) {
                         theonCounter.incrementEventCount(TheonStatus.HTTP_POST_FAILURE);
                         theonCounter.incrementEventCount(TheonStatus.MESSAGE_SEND_FAILURE, count);
-                        logger.error(
-                                "Could not bulk post with length " + builder.length() + " to - "
-                                        + post.getRequestLine(), ex);
+                        logger.error("Could not bulk post with length " + builder.length() + " to - "
+                                + post.getRequestLine(), ex);
                         status = false;
                     } finally {
                         try {
@@ -511,7 +501,7 @@ public class TheonClient<E extends Serializable> {
                 post.setConfig(requestConfig);
                 CloseableHttpResponse response = null;
                 try {
-                    post.setEntity(new StringEntity(builder.toString()));
+                    post.setEntity(new StringEntity(builder.toString(), charset));
                     response = httpClient.execute(post);
                     theonCounter.incrementEventCount(TheonStatus.HTTP_POST_SUCCESS);
                     theonCounter.incrementEventCount(TheonStatus.MESSAGE_SEND_SUCCESS, count);
@@ -556,7 +546,7 @@ public class TheonClient<E extends Serializable> {
         post.setConfig(requestConfig);
         CloseableHttpResponse response = null;
         try {
-            post.setEntity(new StringEntity(':' + message.toString()));
+            post.setEntity(new StringEntity(':' + message.toString(), charset));
             response = httpClient.execute(post);
             theonCounter.incrementEventCount(TheonStatus.HTTP_POST_SUCCESS);
             theonCounter.incrementEventCount(TheonStatus.MESSAGE_SEND_SUCCESS);
@@ -624,6 +614,35 @@ public class TheonClient<E extends Serializable> {
      */
     public void setTheonUrl(final String theonUrl) {
         this.theonUrl = theonUrl;
+    }
+
+    /**
+     * @return the charset
+     */
+    public Charset getCharset() {
+        return charset;
+    }
+
+    /**
+     * @param charset
+     *            the charset to set
+     */
+    public void setCharset(final Charset charset) {
+        this.charset = charset;
+    }
+
+    /**
+     * @return the waitEnabled
+     */
+    public boolean isWaitEnabled() {
+        return waitEnabled;
+    }
+
+    /**
+     * @return the requestConfig
+     */
+    public RequestConfig getRequestConfig() {
+        return requestConfig;
     }
 
     /**
@@ -923,7 +942,8 @@ public class TheonClient<E extends Serializable> {
     }
 
     /**
-     * @param certValidationDisabled the certValidationDisabled to set
+     * @param certValidationDisabled
+     *            the certValidationDisabled to set
      */
     public void setCertValidationDisabled(final boolean certValidationDisabled) {
         this.certValidationDisabled = certValidationDisabled;
@@ -937,7 +957,8 @@ public class TheonClient<E extends Serializable> {
     }
 
     /**
-     * @param stringType the stringType to set
+     * @param stringType
+     *            the stringType to set
      */
     public void setStringType(final boolean stringType) {
         this.stringType = stringType;

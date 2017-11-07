@@ -547,6 +547,23 @@ public class MetaUtil {
     }
 
     /**
+     * Returns a new map which has single entry with the given key and value.
+     *
+     * @param key
+     *            the key
+     * @param value
+     *            the value
+     * @param <T>
+     *            the type of values
+     * @return the map
+     */
+    public static <T> Map<String, T> createMap(final String key, final Object value, final Class<T> clazz) {
+        final Map<String, T> valueMap = new HashMap<String, T>();
+        valueMap.put(key, clazz.cast(value));
+        return valueMap;
+    }
+
+    /**
      * Create a property map from given varargs.
      *
      * @param args
